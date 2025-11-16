@@ -225,4 +225,4 @@ Jika sistem ini diimplementasikan:
 
 - **Project**: Academic assignment untuk educational purposes
 - **Diagrams**: Open untuk referensi & learning
-- **Figma Prototype Link:** https://www.figma.com/design/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=163-271&t=0aDKtOrFROnJeyAy-1
+- **Figma Prototype Link:** [https://www.figma.com/design/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=163-271&t=0aDKtOrFROnJeyAy-1](https://www.figma.com/proto/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=195-4357&p=f&t=c40UTSRVGaDDmjo0-1&scaling=scale-down&content-scaling=fixed&page-id=163%3A271)

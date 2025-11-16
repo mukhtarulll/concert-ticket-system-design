@@ -59,6 +59,8 @@ This group project analyzes and designs an information system for automating the
 - Concert Ticket (physical print)
 
 ### 2. Context Diagram (System Boundary)
+![Context Diagram](CD.png)
+
 Highest-level diagram showing system interaction with external entities:
 - **Input**: Audience data, payment request, report request
 - **Output**: Printed tickets, receipts, reports (Cashier/Sales/Manager), notifications
@@ -87,18 +89,107 @@ Highest-level diagram showing system interaction with external entities:
 - **D4: Orders** — Stores booking orders from Audience
 
 ### 4. Entity Relationship Diagram (ERD)
-**Main Entities:**
-- **Audience** (ID, Name, Email, Phone, Address)
-- **Ticket** (ID, Ticket Type, Price, Concert Time, Status)
-- **Order** (ID, Audience_ID, Ticket_ID, Quantity, Total Price, Status)
-- **Payment** (ID, Order_ID, Payment Method, Date, Amount)
-- **Report** (ID, Date, Total Sales, Tickets Sold)
+![Entity Relationship Diagram](ERD.png)
 
-**Relationships:**
-- Audience **creates** Orders (1:N)
-- Orders **includes** Tickets (N:M via junction table)
-- Orders **processed into** Payment (1:1)
-- Payments **generate** Reports (N:1, aggregated)
+**Main Entities & Attributes:**
+
+#### **1. Penonton (Audience)**
+- **Primary Key**: id_penonton
+- **Attributes**: nama (name), email
+- **Relationships**: 
+  - 1 Audience can make **N Payments** (1:N)
+  - 1 Audience can make **N Bookings** (1:N)
+
+#### **2. Acara (Event)**
+- **Primary Key**: id_acara
+- **Attributes**: tanggal (date), nama (name)
+- **Relationships**:
+  - 1 Event has **N Bookings** (1:N)
+
+#### **3. Pemesanan (Booking)**
+- **Primary Key**: Composite (id_acara, id_penonton)
+- **Foreign Keys**: id_acara, id_penonton
+- **Attributes**: tanggal (date), id_pemesanan (booking_id), jumlah (quantity), jenis (type), status
+- **Relationships**:
+  - N:1 with **Audience**
+  - N:1 with **Event**
+  - 1:N with **Payment**
+
+#### **4. Tiket (Ticket)**
+- **Primary Key**: id_tiket
+- **Attributes**: jenis (type), tanggal (date)
+- **Relationships**:
+  - 1 Ticket printed through **N Ticket Printing** (1:N via relationship)
+  - Many-to-Many with **Cashier** via **Ticket Printing**
+
+#### **5. Kasir (Cashier)**
+- **Primary Key**: id_kasir
+- **Attributes**: nama (name)
+- **Relationships**:
+  - 1 Cashier processes **N Payments** (1:N)
+  - 1 Cashier prints **N Tickets** via **Ticket Printing** (1:N)
+  - 1 Cashier creates **N Reports** (1:N)
+
+#### **6. Pembayaran (Payment)**
+- **Primary Key**: Composite (id_pembayaran, id_pemesanan)
+- **Foreign Keys**: id_pemesanan
+- **Attributes**: jenis (type)
+- **Relationships**:
+  - N:1 with **Audience**
+  - N:1 with **Cashier**
+
+#### **7. Pencetakan Tiket (Ticket Printing)**
+- **Relationship Entity** (Many-to-Many resolver)
+- **Primary Key**: Composite (id_tiket, id_pembayaran)
+- **Foreign Keys**: id_tiket, id_pembayaran, id_kasir
+- **Relationships**:
+  - N:1 with **Ticket**
+  - N:1 with **Payment**
+  - N:1 with **Cashier**
+
+#### **8. Pelaporan (Reporting)**
+- **Primary Key**: Composite (id_laporan, id_kasir)
+- **Foreign Keys**: id_kasir
+- **Attributes**: tanggal (date), total_penjualan (total_sales - aggregated from Payment)
+- **Relationships**:
+  - N:1 with **Cashier**
+  - 1:1 with **Sales Department** (report copy)
+  - 1:1 with **Manager** (report copy)
+
+#### **9. Bagian Penjualan (Sales Department)**
+- **Primary Key**: id_penjualan
+- **Attributes**: nama (name), kontak (contact)
+- **Relationships**:
+  - 1:1 with **Reporting** (receives report)
+
+#### **10. Manajer (Manager)**
+- **Primary Key**: id_manajer
+- **Attributes**: nama (name), kontak (contact)
+- **Relationships**:
+  - 1:1 with **Reporting** (receives report)
+
+**Cardinality:**
+- **1:N** — One-to-Many (e.g., 1 Cashier → N Payments)
+- **N:M** — Many-to-Many (e.g., Ticket ↔ Payment via Ticket Printing)
+- **1:1** — One-to-One (e.g., Reporting → Manager)
+
+---
+
+## Database Normalization (3NF)
+
+### First Normal Form (1NF)
+- All attributes are atomic (no multi-valued attributes)  
+- Every table has a primary key
+
+### Second Normal Form (2NF)
+- Meets 1NF requirements  
+- No partial dependency (all non-key attributes fully depend on primary key)  
+- Example: Booking uses composite key (id_acara, id_penonton), all other attributes (date, quantity, status) fully depend on both keys
+
+### Third Normal Form (3NF)
+- Meets 2NF requirements  
+- No transitive dependency (non-key attributes don't depend on other non-key attributes)  
+- Example: Reporting only stores id_kasir (FK), doesn't store cashier_name (retrieved from Cashier table via JOIN)
 
 ---
 
@@ -144,25 +235,6 @@ Highest-level diagram showing system interaction with external entities:
 
 ---
 
-## Input-Output Documents
-
-### Input:
-- Audience data (name, email, phone, address)
-- Ticket selection (time, type, quantity)
-- Payment data (method, amount)
-- ACC approval from Event Department
-
-### Output:
-- Booking form (digital, stored in database)
-- Payment receipt (PDF/print)
-- Concert ticket (QR code + physical print)
-- Sales reports:
-  - 1 copy for Cashier (daily summary)
-  - 1 copy for Sales Department (inventory tracking)
-  - 1 copy for Manager (executive dashboard)
-
----
-
 ## Technology Stack (Proposed)
 
 If this system were to be implemented, recommended stack:
@@ -177,26 +249,6 @@ If this system were to be implemented, recommended stack:
 | **Reporting** | Chart.js / D3.js for dashboard visualization |
 | **QR Code** | QR Code Generator library |
 | **Deployment** | Docker, AWS/GCP, CI/CD pipeline |
-
----
-
-## Skills Demonstrated
-
-### System Analysis
-- **Business Process Modeling**: Mapping manual workflows with Flowmap
-- **Requirements Analysis**: Identifying input/output, stakeholders, pain points
-- **Process Optimization**: Manual → automated transformation
-
-### System Design
-- **Context Diagram**: Defining system boundaries & external entities
-- **Data Flow Diagram (DFD)**: Modeling information flow between processes
-- **Entity Relationship Diagram (ERD)**: Database schema design with relationships
-- **Normalization**: Ensuring 3NF to reduce redundancy
-
-### Documentation
-- Clear, structured, professional documentation (academic report format)
-- Visual diagrams with standard notation (Gane-Sarson DFD, Crow's foot ERD)
-- Input-output specification
 
 ---
 
@@ -225,4 +277,4 @@ If this system were implemented:
 
 - **Project**: Academic assignment for educational purposes
 - **Diagrams**: Open for reference & learning
-- **Figma Prototype Link:** https://www.figma.com/proto/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=195-4357&p=f&t=c40UTSRVGaDDmjo0-1&scaling=scale-down&content-scaling=fixed&page-id=163%3A271
+- **Figma Prototype Link:** https://www.figma.com/design/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=163-271&t=0aDKtOrFROnJeyAy-1

@@ -59,6 +59,8 @@ Proyek kelompok ini menganalisis dan merancang sistem informasi untuk otomatisas
 - Tiket Konser (cetak fisik)
 
 ### 2. Context Diagram (System Boundary)
+![Context Diagram](CD.png)
+
 Diagram level tertinggi yang menunjukkan interaksi sistem dengan external entities:
 - **Input**: Data penonton, permintaan pembayaran, permintaan laporan
 - **Output**: Tiket cetak, kwitansi, laporan (Kasir/Penjualan/Manajer), notifikasi
@@ -87,18 +89,107 @@ Diagram level tertinggi yang menunjukkan interaksi sistem dengan external entiti
 - **D4: Pesanan** — Store booking order dari Penonton
 
 ### 4. Entity Relationship Diagram (ERD)
-**Entitas Utama:**
-- **Penonton** (ID, Nama, Email, No. HP, Alamat)
-- **Tiket** (ID, Jenis Tiket, Harga, Waktu Konser, Status)
-- **Pesanan** (ID, ID_Penonton, ID_Tiket, Jumlah, Total Harga, Status)
-- **Pembayaran** (ID, ID_Pesanan, Metode Pembayaran, Tanggal, Jumlah)
-- **Laporan** (ID, Tanggal, Total Penjualan, Jumlah Tiket Terjual)
+![Entity Relationship Diagram](ERD.png)
 
-**Relationships:**
-- Penonton **membuat** Pesanan (1:N)
-- Pesanan **mencakup** Tiket (N:M via junction table)
-- Pesanan **diproses menjadi** Pembayaran (1:1)
-- Pembayaran **menghasilkan** Laporan (N:1, aggregated)
+**Entitas Utama & Atribut:**
+
+#### **1. Penonton**
+- **Primary Key**: id_penonton
+- **Atribut**: nama, email
+- **Relasi**: 
+  - 1 Penonton dapat melakukan **N Pembayaran** (1:N)
+  - 1 Penonton dapat melakukan **N Pemesanan** (1:N)
+
+#### **2. Acara**
+- **Primary Key**: id_acara
+- **Atribut**: tanggal, nama
+- **Relasi**:
+  - 1 Acara memiliki **N Pemesanan** (1:N)
+
+#### **3. Pemesanan**
+- **Primary Key**: Composite (id_acara, id_penonton)
+- **Foreign Keys**: id_acara, id_penonton
+- **Atribut**: tanggal, id_pemesanan, jumlah, jenis, status
+- **Relasi**:
+  - N:1 dengan **Penonton**
+  - N:1 dengan **Acara**
+  - 1:N dengan **Pembayaran**
+
+#### **4. Tiket**
+- **Primary Key**: id_tiket
+- **Atribut**: jenis, tanggal
+- **Relasi**:
+  - 1 Tiket dicetak melalui **N Pencetakan Tiket** (1:N via relationship)
+  - Many-to-Many dengan **Kasir** via **Pencetakan Tiket**
+
+#### **5. Kasir**
+- **Primary Key**: id_kasir
+- **Atribut**: nama
+- **Relasi**:
+  - 1 Kasir memproses **N Pembayaran** (1:N)
+  - 1 Kasir mencetak **N Tiket** via **Pencetakan Tiket** (1:N)
+  - 1 Kasir membuat **N Pelaporan** (1:N)
+
+#### **6. Pembayaran**
+- **Primary Key**: Composite (id_pembayaran, id_pemesanan)
+- **Foreign Keys**: id_pemesanan
+- **Atribut**: jenis
+- **Relasi**:
+  - N:1 dengan **Penonton**
+  - N:1 dengan **Kasir**
+
+#### **7. Pencetakan Tiket**
+- **Relationship Entity** (Many-to-Many resolver)
+- **Primary Key**: Composite (id_tiket, id_pembayaran)
+- **Foreign Keys**: id_tiket, id_pembayaran, id_kasir
+- **Relasi**:
+  - N:1 dengan **Tiket**
+  - N:1 dengan **Pembayaran**
+  - N:1 dengan **Kasir**
+
+#### **8. Pelaporan**
+- **Primary Key**: Composite (id_laporan, id_kasir)
+- **Foreign Keys**: id_kasir
+- **Atribut**: tanggal, total_penjualan (agregat dari Pembayaran)
+- **Relasi**:
+  - N:1 dengan **Kasir**
+  - 1:1 dengan **Bagian Penjualan** (report copy)
+  - 1:1 dengan **Manajer** (report copy)
+
+#### **9. Bagian Penjualan**
+- **Primary Key**: id_penjualan
+- **Atribut**: nama, kontak
+- **Relasi**:
+  - 1:1 dengan **Pelaporan** (receives report)
+
+#### **10. Manajer**
+- **Primary Key**: id_manajer
+- **Atribut**: nama, kontak
+- **Relasi**:
+  - 1:1 dengan **Pelaporan** (receives report)
+
+**Kardinalitas:**
+- **1:N** — One-to-Many (e.g., 1 Kasir → N Pembayaran)
+- **N:M** — Many-to-Many (e.g., Tiket ↔ Pembayaran via Pencetakan Tiket)
+- **1:1** — One-to-One (e.g., Pelaporan → Manajer)
+
+---
+
+## Normalisasi Database (3NF)
+
+### Bentuk Normal Pertama (1NF)
+- Semua atribut atomic (tidak ada multi-valued attributes)  
+- Setiap tabel memiliki primary key
+
+### Bentuk Normal Kedua (2NF)
+- Sudah memenuhi 1NF  
+- No partial dependency (semua non-key attributes bergantung penuh pada primary key)  
+- Contoh: Pemesanan menggunakan composite key (id_acara, id_penonton), semua atribut lain (tanggal, jumlah, status) bergantung penuh pada kedua key ini
+
+### Bentuk Normal Ketiga (3NF)
+- Sudah memenuhi 2NF  
+- No transitive dependency (non-key attributes tidak bergantung pada non-key attributes lain)  
+- Contoh: Pelaporan hanya menyimpan id_kasir (FK), tidak menyimpan nama_kasir (mengambil dari tabel Kasir via JOIN)
 
 ---
 
@@ -144,25 +235,6 @@ Diagram level tertinggi yang menunjukkan interaksi sistem dengan external entiti
 
 ---
 
-## Dokumen Input-Output
-
-### Input:
-- Data penonton (nama, email, no. HP, alamat)
-- Pilihan tiket (waktu, tipe, jumlah)
-- Data pembayaran (metode, jumlah)
-- Approval ACC dari Bagian Acara
-
-### Output:
-- Formulir pemesanan (digital, tersimpan di database)
-- Kwitansi pembayaran (PDF/cetak)
-- Tiket konser (QR code + cetak fisik)
-- Laporan penjualan:
-  - 1 copy untuk Kasir (daily summary)
-  - 1 copy untuk Bagian Penjualan (inventory tracking)
-  - 1 copy untuk Manajer (executive dashboard)
-
----
-
 ## Technology Stack (Proposed)
 
 Jika sistem ini diimplementasikan, stack yang disarankan:
@@ -177,26 +249,6 @@ Jika sistem ini diimplementasikan, stack yang disarankan:
 | **Reporting** | Chart.js / D3.js for dashboard visualization |
 | **QR Code** | QR Code Generator library |
 | **Deployment** | Docker, AWS/GCP, CI/CD pipeline |
-
----
-
-## Skills Demonstrated
-
-### System Analysis
-- **Business Process Modeling**: Mapping manual workflows dengan Flowmap
-- **Requirements Analysis**: Identifying input/output, stakeholders, pain points
-- **Process Optimization**: Transformasi manual → automated
-
-### System Design
-- **Context Diagram**: Defining system boundaries & external entities
-- **Data Flow Diagram (DFD)**: Modeling information flow antar proses
-- **Entity Relationship Diagram (ERD)**: Database schema design dengan relationships
-- **Normalization**: Ensuring 3NF untuk mengurangi redundancy
-
-### Documentation
-- Clear, structured, professional documentation (academic report format)
-- Visual diagrams dengan standard notation (Gane-Sarson DFD, Crow's foot ERD)
-- Input-output specification
 
 ---
 
@@ -225,4 +277,4 @@ Jika sistem ini diimplementasikan:
 
 - **Project**: Academic assignment untuk educational purposes
 - **Diagrams**: Open untuk referensi & learning
-- **Figma Prototype Link:** [https://www.figma.com/design/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=163-271&t=0aDKtOrFROnJeyAy-1](https://www.figma.com/proto/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=195-4357&p=f&t=c40UTSRVGaDDmjo0-1&scaling=scale-down&content-scaling=fixed&page-id=163%3A271)
+- **Figma Prototype Link:** https://www.figma.com/design/g07HpTiRGC9yP1MyeeSamZ/ANSI?node-id=163-271&t=0aDKtOrFROnJeyAy-1
